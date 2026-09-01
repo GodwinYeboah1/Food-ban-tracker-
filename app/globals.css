@@ -1,0 +1,255 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.99 0.003 106);
+  --foreground: oklch(0.21 0.01 65);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.01 65);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.01 65);
+  --primary: oklch(0.28 0.02 60);
+  --primary-foreground: oklch(0.98 0.003 106);
+  --secondary: oklch(0.96 0.005 100);
+  --secondary-foreground: oklch(0.28 0.02 60);
+  --muted: oklch(0.96 0.005 100);
+  --muted-foreground: oklch(0.53 0.012 70);
+  --accent: oklch(0.95 0.008 95);
+  --accent-foreground: oklch(0.28 0.02 60);
+  --border: oklch(0.91 0.006 95);
+  --input: oklch(0.91 0.006 95);
+  --ring: oklch(0.6 0.05 55);
+
+  /* Status system. Used identically in tables, badges, detail pages and the
+     map, so a colour always means the same thing wherever it appears. */
+  --status-red: oklch(0.55 0.19 25);
+  --status-red-bg: oklch(0.96 0.03 25);
+  --status-red-border: oklch(0.87 0.07 25);
+
+  --status-amber: oklch(0.55 0.13 65);
+  --status-amber-bg: oklch(0.96 0.04 75);
+  --status-amber-border: oklch(0.87 0.08 75);
+
+  --status-blue: oklch(0.52 0.13 250);
+  --status-blue-bg: oklch(0.96 0.025 250);
+  --status-blue-border: oklch(0.87 0.06 250);
+
+  --status-green: oklch(0.48 0.11 155);
+  --status-green-bg: oklch(0.96 0.03 160);
+  --status-green-border: oklch(0.86 0.07 160);
+
+  --status-slate: oklch(0.5 0.015 250);
+  --status-slate-bg: oklch(0.96 0.004 250);
+  --status-slate-border: oklch(0.89 0.008 250);
+}
+
+.dark {
+  --background: oklch(0.17 0.006 75);
+  --foreground: oklch(0.95 0.004 100);
+  --card: oklch(0.21 0.007 75);
+  --card-foreground: oklch(0.95 0.004 100);
+  --popover: oklch(0.21 0.007 75);
+  --popover-foreground: oklch(0.95 0.004 100);
+  --primary: oklch(0.93 0.005 100);
+  --primary-foreground: oklch(0.21 0.007 75);
+  --secondary: oklch(0.27 0.008 75);
+  --secondary-foreground: oklch(0.95 0.004 100);
+  --muted: oklch(0.26 0.008 75);
+  --muted-foreground: oklch(0.68 0.012 85);
+  --accent: oklch(0.29 0.009 75);
+  --accent-foreground: oklch(0.95 0.004 100);
+  --border: oklch(0.3 0.008 75);
+  --input: oklch(0.32 0.009 75);
+  --ring: oklch(0.6 0.04 60);
+
+  --status-red: oklch(0.75 0.15 25);
+  --status-red-bg: oklch(0.28 0.06 25);
+  --status-red-border: oklch(0.4 0.09 25);
+
+  --status-amber: oklch(0.79 0.12 75);
+  --status-amber-bg: oklch(0.29 0.05 70);
+  --status-amber-border: oklch(0.42 0.08 70);
+
+  --status-blue: oklch(0.75 0.11 250);
+  --status-blue-bg: oklch(0.28 0.05 250);
+  --status-blue-border: oklch(0.4 0.08 250);
+
+  --status-green: oklch(0.75 0.12 158);
+  --status-green-bg: oklch(0.27 0.05 160);
+  --status-green-border: oklch(0.39 0.07 160);
+
+  --status-slate: oklch(0.72 0.015 250);
+  --status-slate-bg: oklch(0.27 0.006 250);
+  --status-slate-border: oklch(0.38 0.01 250);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  /* Browser surfaces. These ship with defaults belonging to no design system;
+     theming them is what separates a built page from an assembled one. */
+  ::selection {
+    background-color: color-mix(in oklch, var(--ring) 28%, transparent);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  html {
+    scrollbar-color: var(--border) transparent;
+    scrollbar-width: thin;
+    /* The sticky header is 4rem; anchored jumps must clear it. */
+    scroll-padding-top: 5rem;
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border: 3px solid var(--background);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+
+  input,
+  textarea {
+    caret-color: var(--ring);
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  /* Tabular figures everywhere numbers are compared down a column. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Reading measure, in ch so it tracks font-size rather than a guessed rem.
+     Note the unit: 1ch is the "0" glyph, 0.63em in Inter, while the average
+     character in running prose is ~0.5em. So the ch figure is deliberately
+     lower than the characters-per-line it produces — 52ch lands at ~66 CPL,
+     inside the comfortable 65-75 band. Tailwind's max-w-2xl gives ~84. */
+  .measure {
+    max-width: 52ch;
+  }
+  .measure-tight {
+    max-width: 42ch;
+  }
+  /* Dense UI copy inside cards and table cells. */
+  .measure-ui {
+    max-width: 34ch;
+  }
+
+  /* Vertical rhythm between major page sections. One decision, applied
+     everywhere, instead of an ad-hoc mt-16 per page. */
+  .section-gap {
+    margin-top: 4.5rem;
+  }
+  @media (min-width: 640px) {
+    .section-gap {
+      margin-top: 6rem;
+    }
+  }
+
+  /* Page-level top padding, matched across every route. */
+  .page-top {
+    padding-top: 2.5rem;
+  }
+  @media (min-width: 640px) {
+    .page-top {
+      padding-top: 4rem;
+    }
+  }
+}
+
+@layer components {
+  /* One class per status tone, so the mapping lives in exactly one place. */
+  .tone-red {
+    --tone: var(--status-red);
+    --tone-bg: var(--status-red-bg);
+    --tone-border: var(--status-red-border);
+  }
+  .tone-amber {
+    --tone: var(--status-amber);
+    --tone-bg: var(--status-amber-bg);
+    --tone-border: var(--status-amber-border);
+  }
+  .tone-blue {
+    --tone: var(--status-blue);
+    --tone-bg: var(--status-blue-bg);
+    --tone-border: var(--status-blue-border);
+  }
+  .tone-green {
+    --tone: var(--status-green);
+    --tone-bg: var(--status-green-bg);
+    --tone-border: var(--status-green-border);
+  }
+  .tone-slate {
+    --tone: var(--status-slate);
+    --tone-bg: var(--status-slate-bg);
+    --tone-border: var(--status-slate-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
