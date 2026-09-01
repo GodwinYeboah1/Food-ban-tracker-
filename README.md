@@ -77,13 +77,27 @@ resolving to an antidumping notice about raw honey from Brazil. A link checker s
 npm run verify          # exits non-zero on a changed or dead citation — safe to gate a deploy
 ```
 
-Surfaces:
+### When it runs
 
-| Where | What |
-|---|---|
-| `/status` | Public report, including failures. Re-checks every 6h. |
-| `GET /api/verify` | Same report as JSON; `503` when unhealthy. |
-| `/api/cron/verify-sources` | Daily at 06:00 UTC; returns `503` so a failure is visible in Vercel. |
+Twice a day, morning and evening, from two independent places — so a failure in
+one does not mean the check silently stops.
+
+| Where | Schedule | On failure |
+|---|---|---|
+| **GitHub Actions** | 11:00 and 23:00 UTC, plus every push touching the dataset | Fails the run and opens an issue; closes it when sources verify again |
+| **Vercel cron** | 11:00 and 23:00 UTC | Returns `503`, visible in the Vercel dashboard |
+| `/status` | On demand, cached 6h | Renders failures publicly |
+| `GET /api/verify` | On demand, cached 6h | `503` when unhealthy |
+| `npm run verify` | Manual / CI | Exits `1` — safe to gate a deploy |
+
+Times are UTC and chosen to land morning and evening US Eastern (11:00 UTC is
+07:00 EDT, 23:00 UTC is 19:00 EDT). Neither scheduler observes daylight saving,
+and Vercel may fire anywhere inside the scheduled hour.
+
+**Why two entries rather than one `0 11,23 * * *`:** Vercel's Hobby plan allows
+100 cron jobs per project but only one run per day each, and a multi-hour
+expression is rejected at deploy time. Two entries with distinct query strings
+are two daily jobs, which is allowed.
 
 Hosts that refuse bots but serve browsers (EFSA behind Cloudflare) are reported as **not checkable**
 rather than broken — calling a live page dead is its own kind of wrong.

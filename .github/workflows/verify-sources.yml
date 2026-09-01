@@ -1,0 +1,86 @@
+name: Verify sources
+
+# Twice a day, morning and evening (UTC). This is the durable half of the
+# check: it runs independently of the deployment, leaves a permanent record in
+# the Actions log, and opens an issue when a citation breaks — so a failure
+# cannot pass unnoticed the way a silent 200 once did.
+#
+# GitHub may delay scheduled runs under load, and disables schedules on repos
+# with no activity for 60 days. The Vercel crons in vercel.json cover the same
+# check from the deployment side.
+on:
+  schedule:
+    - cron: "0 11 * * *" # ~07:00 America/New_York
+    - cron: "0 23 * * *" # ~19:00 America/New_York
+  workflow_dispatch:
+  push:
+    # Never let a change to the dataset or the checker itself land unverified.
+    paths:
+      - "lib/data/**"
+      - "lib/timeline.ts"
+      - "lib/regions.ts"
+      - "lib/verify.ts"
+      - "scripts/verify.mts"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check every citation against its source
+        id: verify
+        run: |
+          set -o pipefail
+          npm run verify 2>&1 | tee verify-output.txt
+
+      - name: Open or update an issue when a citation breaks
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Source verification failing"
+          BODY_FILE=$(mktemp)
+          {
+            echo "The scheduled source check found a citation that no longer matches its source."
+            echo
+            echo "A failure here means the site is showing a claim whose evidence has moved or changed."
+            echo "Run \`npm run verify\` locally to reproduce."
+            echo
+            echo '```'
+            # Strip ANSI colour so the issue body stays readable.
+            sed -e 's/\x1b\[[0-9;]*m//g' verify-output.txt | tail -60
+            echo '```'
+            echo
+            echo "[Workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } > "$BODY_FILE"
+
+          # One issue per outage rather than one per run.
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file "$BODY_FILE"
+          else
+            gh issue create --title "$TITLE" --body-file "$BODY_FILE"
+          fi
+
+      - name: Close the issue once sources verify again
+        if: success() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh issue list --state open --search "Source verification failing in:title" --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "All citations verify again as of $(date -u +'%Y-%m-%d %H:%M UTC')."
+          fi
