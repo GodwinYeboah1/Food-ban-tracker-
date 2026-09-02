@@ -1,0 +1,19 @@
+
+> food-ban-tracker@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.68.63:3000
+- Environments: .env.local
+✓ Ready in 383ms
+✓ Running next.config.ts took 872ms
+
+ HEAD / 200 in 487ms (next.js: 264ms, application-code: 223ms)
+ GET / 200 in 286ms (next.js: 115ms, application-code: 171ms)
+ GET / 200 in 98ms (next.js: 7ms, application-code: 91ms)
+ GET /foods 200 in 205ms (next.js: 153ms, application-code: 52ms)
+ GET /still-selling 200 in 82ms (next.js: 70ms, application-code: 11ms)
+ GET /recalls 200 in 148ms (next.js: 74ms, application-code: 75ms)
+ GET /changes 200 in 168ms (next.js: 112ms, application-code: 57ms)
+ GET /database 200 in 95ms (next.js: 78ms, application-code: 17ms)
