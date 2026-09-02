@@ -36,6 +36,14 @@ export interface ScanResult {
     brands: string;
     image?: string;
   };
+  /**
+   * How many additives Open Food Facts has recorded for this label, tracked or
+   * not. Zero is the important case: it means the label record carries no
+   * additive data at all, so an empty result is a gap in the evidence rather
+   * than a clean bill of health. Conflating the two would be the same error as
+   * reading "absent from a European list" as "banned".
+   */
+  additivesOnLabel: number;
   /** Tracked additives the US has acted on, most severe first. */
   flagged: FlaggedIngredient[];
   /**
@@ -65,7 +73,7 @@ interface OffProductResponse {
 }
 
 function emptyResult(barcode: string, error?: string): ScanResult {
-  return { barcode, found: false, flagged: [], stricterAbroad: [], error };
+  return { barcode, found: false, additivesOnLabel: 0, flagged: [], stricterAbroad: [], error };
 }
 
 export async function fetchProductByBarcode(barcode: string): Promise<ScanResult> {
@@ -95,7 +103,8 @@ export async function fetchProductByBarcode(barcode: string): Promise<ScanResult
     if (data.status !== 1 || !data.product) return emptyResult(barcode);
 
     const p = data.product;
-    const onLabel = (p.additives_tags ?? [])
+    const allTags = p.additives_tags ?? [];
+    const onLabel = allTags
       .map((tag) => SLUG_BY_TAG[tag])
       .filter((slug): slug is string => Boolean(slug))
       .map((slug) => getIngredient(slug))
@@ -128,6 +137,7 @@ export async function fetchProductByBarcode(barcode: string): Promise<ScanResult
         brands: (p.brands ?? "").trim(),
         image: p.image_front_small_url || undefined,
       },
+      additivesOnLabel: allTags.length,
       flagged,
       stricterAbroad,
     };

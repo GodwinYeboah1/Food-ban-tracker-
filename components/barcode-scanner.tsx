@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   Aperture,
   Camera,
   CircleCheck,
+  CircleOff,
   Flashlight,
   ImageOff,
   Keyboard,
@@ -57,6 +58,7 @@ interface ScanResponse {
     barcode: string;
     found: boolean;
     product: { name: string; brands: string; image?: string } | null;
+    additivesOnLabel: number;
     flagged: FlaggedRow[];
     stricterAbroad: StricterAbroadRow[];
   };
@@ -73,6 +75,17 @@ type Phase =
   | { kind: "looking-up"; barcode: string }
   | { kind: "result"; result: ScanResponse["data"] }
   | { kind: "error"; message: string; hint?: string };
+
+/** These snapshots are fixed for the life of the page, so nothing to subscribe to. */
+const neverChanges = () => () => {};
+
+/** Raised when the page is served from an origin that has no camera API. */
+class InsecureContextError extends Error {
+  constructor() {
+    super("This page is not served over a secure connection");
+    this.name = "InsecureContextError";
+  }
+}
 
 interface StillReader {
   decodeFromCanvas: (canvas: HTMLCanvasElement) => { getText: () => string };
@@ -236,6 +249,30 @@ export function BarcodeScanner() {
   } | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [diag, setDiag] = useState<Diagnostics>(IDLE_DIAGNOSTICS);
+  /**
+   * Whether this page can reach a camera at all.
+   *
+   * Browsers only expose `navigator.mediaDevices` on a secure origin, and on an
+   * insecure one it is not merely disabled — it is absent, so touching
+   * `.getUserMedia` throws "undefined is not an object". Checked up front and
+   * said plainly, because that error explains nothing to the person reading it.
+   *
+   * Resolved after mount: the server cannot know the origin the page is opened
+   * from, so rendering this during SSR would mismatch on hydration.
+   */
+  const cameraAvailable = useSyncExternalStore(
+    neverChanges,
+    () => Boolean(navigator.mediaDevices?.getUserMedia),
+    // Null on the server and through hydration: the origin the page was opened
+    // from is unknowable there, and guessing would mismatch.
+    () => null,
+  );
+  /** The address the page was opened from, quoted back when it is the problem. */
+  const origin = useSyncExternalStore(
+    neverChanges,
+    () => `${window.location.protocol}//${window.location.host}`,
+    () => null,
+  );
   // Counted in a ref and sampled on a timer: a setState per decoded frame
   // would re-render several times a second for no benefit.
   const framesRef = useRef(0);
@@ -334,6 +371,10 @@ export function BarcodeScanner() {
         const video = videoRef.current;
         if (!video || cancelled) return;
 
+        // Absent rather than merely blocked on an insecure origin, so this has
+        // to be checked before it is dereferenced.
+        if (!navigator.mediaDevices?.getUserMedia) throw new InsecureContextError();
+
         // `environment` asks for the rear camera on a phone, which is the one
         // pointed at the packet. Desktops ignore it and use the only camera.
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -396,7 +437,13 @@ export function BarcodeScanner() {
         if (cancelled) return;
         const name = err instanceof DOMException ? err.name : "";
         const detail = err instanceof Error ? err.message : String(err);
-        if (name === "NotAllowedError") {
+        if (err instanceof InsecureContextError) {
+          setPhase({
+            kind: "error",
+            message: "This page needs a secure connection to use the camera.",
+            hint: `Browsers only allow camera access over https. This page is on ${window.location.protocol}//${window.location.host} — open the https address instead, or enter the barcode digits below.`,
+          });
+        } else if (name === "NotAllowedError") {
           setPhase({
             kind: "error",
             message: "Camera access was denied.",
@@ -623,19 +670,48 @@ export function BarcodeScanner() {
             Point your camera at the barcode on a food package. The product is looked up in Open Food Facts, and any
             additive on its label that the FDA has acted on is listed here with its current legal status.
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={startCamera}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-foreground px-5 text-sm font-medium text-background transition-opacity hover:opacity-90"
+          {/* Said before the button is pressed, not after it fails. On an
+              insecure origin there is no camera API to fail informatively. */}
+          {cameraAvailable === false && (
+            <div
+              className="tone-amber measure mx-auto mt-5 rounded-lg border p-4 text-left"
+              style={{ borderColor: "var(--tone-border)" }}
             >
-              <Camera className="size-4" aria-hidden />
-              Start camera
-            </button>
+              <div className="flex items-start gap-2.5">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" style={{ color: "var(--tone)" }} aria-hidden />
+                <div>
+                  <div className="text-sm font-medium">The camera is unavailable on this address</div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                    Browsers only allow camera access over <strong className="font-medium text-foreground">https</strong>{" "}
+                    (or on localhost). This page is on{" "}
+                    <span className="font-medium text-foreground">{origin ?? "an insecure address"}</span>. Open the
+                    https address on this device and the camera will work — or enter the barcode digits instead.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            {cameraAvailable !== false && (
+              <button
+                type="button"
+                onClick={startCamera}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-foreground px-5 text-sm font-medium text-background transition-opacity hover:opacity-90"
+              >
+                <Camera className="size-4" aria-hidden />
+                Start camera
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPhase({ kind: "manual" })}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground"
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm",
+                cameraAvailable === false
+                  ? "bg-foreground px-5 font-medium text-background transition-opacity hover:opacity-90"
+                  : "border border-border text-muted-foreground hover:text-foreground",
+              )}
             >
               <Keyboard className="size-4" aria-hidden />
               Type a barcode
@@ -833,6 +909,8 @@ function ScanResultView({ result, onRescan }: { result: ScanResponse["data"]; on
   }
 
   const { product, flagged, stricterAbroad } = result;
+  // No additive data at all is a different answer from "none of them tracked".
+  const noLabelData = result.additivesOnLabel === 0;
   const nothingFound = flagged.length === 0 && stricterAbroad.length === 0;
 
   return (
@@ -861,15 +939,37 @@ function ScanResultView({ result, onRescan }: { result: ScanResponse["data"]; on
         </div>
       </div>
 
-      {nothingFound && (
+      {/* Two different answers that would otherwise look identical: a label
+          that lists additives and none are tracked, versus a label record that
+          holds no additive data at all. The second is missing evidence, and
+          presenting it as a clean result would be the central error this site
+          exists to avoid. */}
+      {nothingFound && noLabelData && (
+        <div className="tone-slate mt-4 rounded-xl border bg-card p-6" style={{ borderColor: "var(--tone-border)" }}>
+          <div className="flex items-start gap-3">
+            <CircleOff className="mt-0.5 size-4 shrink-0" style={{ color: "var(--tone)" }} aria-hidden />
+            <div>
+              <div className="text-sm font-medium">No additive data on file for this product</div>
+              <p className="measure mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Open Food Facts has this product but nobody has recorded its additives. This is a gap in the label
+                record, <strong className="font-medium text-foreground">not</strong> a finding that the product is
+                free of them — read the ingredients panel on the pack.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nothingFound && !noLabelData && (
         <div className="tone-green mt-4 rounded-xl border bg-card p-6" style={{ borderColor: "var(--tone-border)" }}>
           <div className="flex items-start gap-3">
             <CircleCheck className="mt-0.5 size-4 shrink-0" style={{ color: "var(--tone)" }} aria-hidden />
             <div>
               <div className="text-sm font-medium">No tracked additives on this label</div>
               <p className="measure mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                None of the additives this site tracks appear in the label data for this product. That is not a
-                verdict on the product — this site covers only substances a regulator has acted on, which is a small
+                Its label lists {result.additivesOnLabel}{" "}
+                {result.additivesOnLabel === 1 ? "additive" : "additives"}, none of which this site tracks. That is
+                not a verdict on the product — this site covers only substances a regulator has acted on, a small
                 fraction of what may be in any food.
               </p>
             </div>

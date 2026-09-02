@@ -19,6 +19,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ bar
       barcode: result.barcode,
       found: result.found,
       product: result.product ?? null,
+      // Zero means OFF holds no additive data for this label at all — an
+      // empty `flagged` then reflects missing evidence, not a clean product.
+      additivesOnLabel: result.additivesOnLabel,
       flagged: result.flagged.map((f) => ({
         slug: f.ingredient.slug,
         name: f.ingredient.name,
