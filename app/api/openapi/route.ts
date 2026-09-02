@@ -74,6 +74,27 @@ export async function GET() {
           },
         },
       },
+      "/api/scan/{barcode}": {
+        get: {
+          summary: "Tracked additives on a product's label, by barcode",
+          description:
+            "Looks the barcode up in Open Food Facts and returns the tracked substances its label lists, most severe first. Label data is crowd-sourced and is weaker evidence than the rulings it is matched against.",
+          parameters: [
+            {
+              name: "barcode",
+              in: "path",
+              required: true,
+              schema: { type: "string", pattern: "^\\d{8,14}$" },
+              example: "3017620422003",
+            },
+          ],
+          responses: {
+            "200": { description: "The product and its flagged additives; found is false if the barcode is unknown" },
+            "400": { description: "Barcode is not 8-14 digits" },
+            "502": { description: "Open Food Facts could not be reached" },
+          },
+        },
+      },
       "/api/regions": {
         get: {
           summary: "Tracked regulators and the status vocabulary",

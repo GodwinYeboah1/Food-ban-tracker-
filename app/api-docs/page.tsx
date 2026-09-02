@@ -54,6 +54,16 @@ const ENDPOINTS: Endpoint[] = [
   },
   {
     method: "GET",
+    path: "/api/scan/:barcode",
+    description:
+      "Look up a product by barcode in Open Food Facts and return the tracked additives its label lists. Returns two separate lists: flagged (the US has acted on it) and stricterAbroad (lawful in the US, restricted or banned elsewhere) — never merged, because they are different claims. Label data is crowd-sourced and weaker evidence than the rulings themselves; found: false means the barcode is not in that database, not that the product is clean.",
+    params: [
+      { name: "barcode", type: "8–14 digits", description: "Path segment. EAN-8 through GTIN-14. Returns 400 if it is not numeric." },
+    ],
+    example: "/api/scan/3017620422003",
+  },
+  {
+    method: "GET",
     path: "/api/regions",
     description: "The tracked regulators and the status vocabulary, so a client can render labels without hardcoding them.",
     example: "/api/regions",

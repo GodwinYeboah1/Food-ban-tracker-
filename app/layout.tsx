@@ -45,6 +45,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <Link href="/database" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground sm:min-h-8">
                       Database
                     </Link>
+                    <Link href="/scan" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground sm:min-h-8">
+                      Scan a barcode
+                    </Link>
                     <Link href="/foods" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground sm:min-h-8">
                       Browse by food
                     </Link>
