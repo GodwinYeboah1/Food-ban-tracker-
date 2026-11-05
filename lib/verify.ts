@@ -172,7 +172,7 @@ async function checkReachable(ref: SourceRef, signal: AbortSignal): Promise<Chec
   const title = pageTitle(body);
   const served = title
     ? `"${title}"`
-    : `untitled ${body.length}-byte body from ${res.headers.get("server") ?? "unknown server"}: ${body.slice(0, 160).replace(/\s+/g, " ")}`;
+    : `untitled ${body.length}-byte body from ${res.headers.get("server") ?? "unknown server"}`;
   return { ...ref, status: "unreachable", httpStatus: res.status, detail: `HTTP ${res.status} — ${served}` };
 }
 
@@ -187,6 +187,12 @@ function botWall(res: Response, body: string): string | null {
   }
   if (/errors\.edgesuite\.net/i.test(body) || (/<title>Access Denied<\/title>/i.test(body) && /akamai/i.test(res.headers.get("server") ?? ""))) {
     return "Akamai access denied";
+  }
+  // fda.gov diverts datacenter traffic (GitHub's runners included) to an empty
+  // Akamai NetStorage bucket, which answers a bare "Not found". A page FDA has
+  // genuinely removed comes from its own origin, titled "Page Not Found | FDA".
+  if (res.status === 404 && /AkamaiNetStorage/i.test(res.headers.get("server") ?? "")) {
+    return "Akamai NetStorage diversion";
   }
   return null;
 }
