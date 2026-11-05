@@ -170,7 +170,10 @@ async function checkReachable(ref: SourceRef, signal: AbortSignal): Promise<Chec
   // Name the page that came back, so a report says what the server actually
   // served rather than a bare status code.
   const title = pageTitle(body);
-  return { ...ref, status: "unreachable", httpStatus: res.status, detail: `HTTP ${res.status}${title ? ` — "${title}"` : ""}` };
+  const served = title
+    ? `"${title}"`
+    : `untitled ${body.length}-byte body from ${res.headers.get("server") ?? "unknown server"}: ${body.slice(0, 160).replace(/\s+/g, " ")}`;
+  return { ...ref, status: "unreachable", httpStatus: res.status, detail: `HTTP ${res.status} — ${served}` };
 }
 
 /**
