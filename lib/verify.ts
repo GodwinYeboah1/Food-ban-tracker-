@@ -156,11 +156,41 @@ async function checkReachable(ref: SourceRef, signal: AbortSignal): Promise<Chec
 
   if (res.ok) return { ...ref, status: "ok", httpStatus: res.status };
 
+  const body = await res.text().catch(() => "");
   const host = new URL(ref.url).hostname;
-  if ((res.status === 403 || res.status === 429) && BOT_BLOCKED.some((h) => host.endsWith(h))) {
-    return { ...ref, status: "blocked", httpStatus: res.status, detail: "Serves browsers, refuses automated checks" };
+  const wall = botWall(res, body);
+  if (wall || ((res.status === 403 || res.status === 429) && BOT_BLOCKED.some((h) => host.endsWith(h)))) {
+    return {
+      ...ref,
+      status: "blocked",
+      httpStatus: res.status,
+      detail: `Serves browsers, refuses automated checks${wall ? ` (${wall})` : ""}`,
+    };
   }
-  return { ...ref, status: "unreachable", httpStatus: res.status, detail: `HTTP ${res.status}` };
+  // Name the page that came back, so a report says what the server actually
+  // served rather than a bare status code.
+  const title = pageTitle(body);
+  return { ...ref, status: "unreachable", httpStatus: res.status, detail: `HTTP ${res.status}${title ? ` — "${title}"` : ""}` };
+}
+
+/**
+ * Recognises a CDN's bot wall by what it sends rather than by host, so a
+ * regulator moving behind Cloudflare or Akamai is not mistaken for a dead link.
+ * A genuine not-found page from the site itself carries none of these marks.
+ */
+function botWall(res: Response, body: string): string | null {
+  if (res.headers.get("cf-mitigated") === "challenge" || /<title>Just a moment\.\.\.<\/title>/i.test(body)) {
+    return "Cloudflare challenge";
+  }
+  if (/errors\.edgesuite\.net/i.test(body) || (/<title>Access Denied<\/title>/i.test(body) && /akamai/i.test(res.headers.get("server") ?? ""))) {
+    return "Akamai access denied";
+  }
+  return null;
+}
+
+function pageTitle(html: string): string | null {
+  const m = html.match(/<title[^>]*>([^<]{1,120})/i);
+  return m ? m[1].replace(/\s+/g, " ").trim() : null;
 }
 
 async function checkOne(ref: SourceRef, timeoutMs: number): Promise<CheckResult> {
